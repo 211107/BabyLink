@@ -4,7 +4,7 @@ const API_BASE = 'https://babylink.liosftwr.space/api-baby-link';
 
 const getToken = async () => {
   const usuario = await AsyncStorage.getItem('usuario');
-  const token = JSON.parse(usuario).token;
+  const token = JSON.parse(usuario)?.value?.token;
   return token ?? null;
 }
 

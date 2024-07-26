@@ -106,13 +106,14 @@ const RegistroBebe = ({navigation, route}) => {
         throw new Error('No se encontró el usuario en AsyncStorage.');
 
       const parsedUsuario = JSON.parse(response);
-      const IdUser = parsedUsuario?.IdUser ?? 0;
+      const IdUser = parsedUsuario?.value?.IdUser ?? 0;
+      console.log("usuario id: ", IdUser);
+
 
       let IdBaby = 0;
-      console.log({bebe});
-      if (bebe !== undefined) {
-        IdBaby = bebe?.IdBaby;
-      }
+      // if (bebe !== undefined) {
+      //   IdBaby = bebe.IdBaby;
+      // }
       const baby = {
         IdBaby,
         birthdate: fechaNacimiento,
@@ -123,7 +124,7 @@ const RegistroBebe = ({navigation, route}) => {
         weight: peso,
         height: estatura,
       };
-      console.log({baby});
+      console.log("baby a enviar: ", baby);
       let responseBaby = await BabyService.guardar(baby);
 
       if (responseBaby) {

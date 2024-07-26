@@ -6,7 +6,9 @@ const url = `${service}`;
 
 const guardar = async user => {
   try {
-    const {data} = await Axios.post(`${url}/save`, user);
+    const {data} = await Axios.post(`${url}/save`, {
+      user: user,
+    });
     return data;
   } catch (error) {
     console.error('Error al guardar el usuario:', error);
