@@ -8,7 +8,7 @@ const guardar = async baby => {
     });
     return data;
   } catch (error) {
-    console.error('Error al guardar el bebe:', error);
+    console.error('Error al guardar el bebe service:', error);
   }
 };
 

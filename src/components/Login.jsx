@@ -53,11 +53,10 @@ const Login = () => {
       // Aquí puedes agregar la lógica de autenticación
 
       const response = await UserService.login(email, contrasena);
-
       try {
         if (response?.value?.IdUser !== 0) {
           AsyncStorage.setItem('usuario', JSON.stringify(response?.value));
-          console.log("Res Login: ",response.value);
+          AsyncStorage.setItem('token', response?.value.token);
           navigation.navigate('Inicio');
         }
       } catch (error) {

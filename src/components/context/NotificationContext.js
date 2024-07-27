@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useState, useEffect } from 'react';
+import React, {createContext, useState, useEffect} from 'react';
 import PushNotification from 'react-native-push-notification';
 import io from 'socket.io-client';
 import CitasMedicasServices from '../../infrastructure/repositories/CitasMedicasServices';
@@ -11,7 +11,7 @@ const socket = io('https://babylink.liosftwr.space/api-baby-link'); // APIGATEWA
 
 export const NotificationContext = createContext();
 
-export const NotificationProvider = ({ children }) => {
+export const NotificationProvider = ({children}) => {
   const [notificaciones, setNotificaciones] = useState([]);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export const NotificationProvider = ({ children }) => {
         importance: 4,
         vibrate: true,
       },
-      created => console.log(`createChannel returned '${created}'`)
+      created => console.log(`createChannel returned '${created}'`),
     );
 
     PushNotification.configure({
@@ -64,41 +64,75 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    listarCitasMedicas();
-    listarDreams();
+    async function getNotificaciones() {
+      try {
+        const bebe = await getBaby();
+        if (bebe !== null) {
+          listarCitasMedicas();
+          listarDreams();
+        }
+      } catch (error) {
+        console.log('Error al cargar listado', error);
+      }
+    }
+
+    getNotificaciones();
   }, []);
 
-  useEffect(() => {
+  async function getBaby() {
     try {
-      const intervalo = setInterval(() => {
-        listarCitasMedicas();
-        listarDreams();
-      }, 5000);
-      return () => clearInterval(intervalo);
+      const bebe = JSON.parse(await AsyncStorage.getItem('bebe'));
+
+      if (bebe !== null) {
+        return bebe;
+      } else {
+        return null;
+      }
     } catch (error) {
-      console.log('error', error);
+      console.log('Error getting baby:', error);
     }
+  }
+
+  useEffect(() => {
+    async function getNotificaciones() {
+      try {
+        const bebe = await getBaby();
+        if (bebe !== null) {
+          const intervalo = setInterval(() => {
+            listarCitasMedicas();
+            listarDreams();
+          }, 5000);
+          return () => clearInterval(intervalo);
+        }
+      } catch (error) {
+        console.log('Error en el intervalo de notificaciones', error);
+      }
+    }
+    getNotificaciones();
   }, []);
 
   const listarDreams = async () => {
     try {
-      let { IdBaby, nameBaby } = JSON.parse(await AsyncStorage.getItem('bebe'));
+      let {IdBaby, nameBaby} = JSON.parse(await AsyncStorage.getItem('bebe'));
       if (!IdBaby) return;
       const response = await DreamService.list(IdBaby);
-      console.log('dreams notifications', response);
       if (response) {
-        const newNotificaciones = response.value.filter(async item => {
-          const notificationSent = await isNotificationSent(item?.IdDream);
-          return notificationSent;
-        }).map(item => ({
-          id: item?.IdDream,
-          texto: `Hora de dormir a las ${item?.initialHour}`,
-          tiempo: moment(`${item?.initialHour}`, 'HH:mm A').fromNow(),
-          icono: require('../../assets/images/notificaciones.png'),
-        }));
-        
-        setNotificaciones(prevNotificaciones => mergeNotificaciones(prevNotificaciones, newNotificaciones));
-        
+        const newNotificaciones = response.value
+          .filter(async item => {
+            const notificationSent = await isNotificationSent(item?.IdDream);
+            return notificationSent;
+          })
+          .map(item => ({
+            id: item?.IdDream,
+            texto: `Hora de dormir a las ${item?.initialHour}`,
+            tiempo: moment(`${item?.initialHour}`, 'HH:mm A').fromNow(),
+            icono: require('../../assets/images/notificaciones.png'),
+          }));
+
+        setNotificaciones(prevNotificaciones =>
+          mergeNotificaciones(prevNotificaciones, newNotificaciones),
+        );
+
         response.value.forEach(async item => {
           const hourToDream = moment(`${item?.initialHour}`, 'HH:mm:ss');
           if (isFifteenMinutesOrLessAway(hourToDream)) {
@@ -119,37 +153,53 @@ export const NotificationProvider = ({ children }) => {
         console.log('sin respuesta: ', response);
       }
     } catch (error) {
-      console.log({ error });
+      // console.log('Error en listarDreams', error);
     }
   };
 
   const listarCitasMedicas = async () => {
     try {
-      let { IdBaby } = JSON.parse(await AsyncStorage.getItem('bebe'));
+      let {IdBaby} = JSON.parse(await AsyncStorage.getItem('bebe'));
       if (!IdBaby) return;
       const response = await CitasMedicasServices.list(IdBaby);
       if (response) {
-        const newNotificaciones = response.value.filter(async item => {
-          const notificationSent = await isNotificationSent(item?.IdMedicalAppointment);
-          return notificationSent;
-        }).map(item => ({
-          id: item?.IdMedicalAppointment,
-          texto: `${item?.title}`,
-          tiempo: moment(`${item?.date} ${item?.hour}`, 'YYYY-MM-DD HH:mm:ss').fromNow(),
-          icono: require('../../assets/images/notificaciones.png'),
-        }));
-        
-        setNotificaciones(prevNotificaciones => mergeNotificaciones(prevNotificaciones, newNotificaciones));
+        const newNotificaciones = response.value
+          .filter(async item => {
+            const notificationSent = await isNotificationSent(
+              item?.IdMedicalAppointment,
+            );
+            return notificationSent;
+          })
+          .map(item => ({
+            id: item?.IdMedicalAppointment,
+            texto: `${item?.title}`,
+            tiempo: moment(
+              `${item?.date} ${item?.hour}`,
+              'YYYY-MM-DD HH:mm:ss',
+            ).fromNow(),
+            icono: require('../../assets/images/notificaciones.png'),
+          }));
+
+        setNotificaciones(prevNotificaciones =>
+          mergeNotificaciones(prevNotificaciones, newNotificaciones),
+        );
 
         response.value.forEach(async item => {
-          const appointmentTime = moment(`${item?.date} ${item?.hour}`, 'YYYY-MM-DD HH:mm:ss');
+          const appointmentTime = moment(
+            `${item?.date} ${item?.hour}`,
+            'YYYY-MM-DD HH:mm:ss',
+          );
           if (isFifteenMinutesOrLessAway(appointmentTime)) {
-            const notificationSent = await isNotificationSent(item?.IdMedicalAppointment);
+            const notificationSent = await isNotificationSent(
+              item?.IdMedicalAppointment,
+            );
             if (!notificationSent) {
               PushNotification.localNotification({
                 channelId: 'babylink-channel',
                 title: 'Recordatorio de Cita',
-                message: `Tienes una cita médica a las ${appointmentTime.format('HH:mm A')}`,
+                message: `Tienes una cita médica a las ${appointmentTime.format(
+                  'HH:mm A',
+                )}`,
                 playSound: true,
                 soundName: 'default',
               });
@@ -160,15 +210,12 @@ export const NotificationProvider = ({ children }) => {
       } else {
         console.log('sin respuesta: ', response);
       }
-    } catch (error) {
-      console.log({ error });
-    }
+    } catch (error) {}
   };
 
   const isFifteenMinutesOrLessAway = targetDateTime => {
     const now = moment().local();
     const differenceInMinutes = targetDateTime.diff(now, 'minutes');
-    console.log('differenceInMinutes', differenceInMinutes, ' ahora: ', now, ' cita: ', targetDateTime);
     return differenceInMinutes <= 15 && differenceInMinutes >= 0;
   };
 
@@ -194,7 +241,10 @@ export const NotificationProvider = ({ children }) => {
         parsedNotifications = JSON.parse(sentNotifications);
       }
       parsedNotifications.push(appointmentId);
-      await AsyncStorage.setItem('sentNotifications', JSON.stringify(parsedNotifications));
+      await AsyncStorage.setItem(
+        'sentNotifications',
+        JSON.stringify(parsedNotifications),
+      );
     } catch (error) {
       console.log('Error marking notification as sent:', error);
     }
@@ -216,7 +266,7 @@ export const NotificationProvider = ({ children }) => {
   };
 
   return (
-    <NotificationContext.Provider value={{ notificaciones }}>
+    <NotificationContext.Provider value={{notificaciones}}>
       {children}
     </NotificationContext.Provider>
   );

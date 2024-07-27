@@ -75,6 +75,9 @@ const Menu = () => {
         });
       */
       Alert.alert('Cerrar sesión', 'Has cerrado sesión exitosamente');
+      AsyncStorage.removeItem('usuario');
+      AsyncStorage.removeItem('bebe');
+      AsyncStorage.removeItem('token');
       navigation.navigate('Login');
     } else if (modalTitle === 'Eliminar cuenta') {
       let usuario = await AsyncStorage.getItem('usuario');

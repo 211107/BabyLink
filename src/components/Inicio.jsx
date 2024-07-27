@@ -41,7 +41,7 @@ const Inicio = ({navigation}) => {
       let baby = await BabyService.getBabyById(usuario?.IdUser);
 
       setBebe(baby?.value);
-      console.log('Datos del bebé:', baby?.value);
+      AsyncStorage.setItem('bebe', JSON.stringify(baby?.value));
       if (baby?.value) {
         setNombreBebe(baby?.value?.nameBaby);
         setPesoBebe(baby?.value?.weight);
@@ -109,7 +109,7 @@ const Inicio = ({navigation}) => {
             Estatura: {estaturaBebe} cm
           </SvgText>
           <SvgText x="101.5" y="280" fill="#FFF" fontSize="20">
-            {fechaNacimientoBebe}
+            {fechaNacimientoBebe ?? ""}
           </SvgText>
 
           {/* Botón de editar */}

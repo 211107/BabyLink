@@ -3,8 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_BASE = 'https://babylink.liosftwr.space/api-baby-link';
 
 const getToken = async () => {
-  const usuario = await AsyncStorage.getItem('usuario');
-  const token = JSON.parse(usuario)?.token;
+  const token = await AsyncStorage.getItem('token');
   return token ?? null;
 };
 
@@ -17,9 +16,7 @@ Axios.interceptors.request.use(
     if (!config.headers) {
       config.headers = {};
     }
-
     const token = await getToken();
-
     if (token) {
       config.headers.token = token;
     }

@@ -108,8 +108,7 @@ const RegistroBebe = ({navigation, route}) => {
         throw new Error('No se encontró el usuario en AsyncStorage.');
 
       const parsedUsuario = JSON.parse(response);
-      const IdUser = parsedUsuario?.value?.IdUser ?? 0;
-      console.log('usuario id: ', IdUser);
+      const IdUser = parsedUsuario?.IdUser;
 
       let IdBaby = 0;
       const baby = {
@@ -122,6 +121,8 @@ const RegistroBebe = ({navigation, route}) => {
         weight: peso,
         height: estatura,
       };
+
+      console.log("Saving ...: ", baby);
       let responseBaby = await BabyService.guardar(baby);
 
       if (responseBaby) {
@@ -152,7 +153,7 @@ const RegistroBebe = ({navigation, route}) => {
           <View style={styles.innerContainer}>
             <View style={styles.headerContainer}>
               <Text style={styles.headerText}>
-                Háblanos un poco de tu bebé {bebe ? bebe?.IdBaby : 'New'}
+                Háblanos un poco de tu bebé
               </Text>
             </View>
 
