@@ -27,8 +27,8 @@ import UserService from '../infrastructure/repositories/ApiUserRepository';
 const {width, height} = Dimensions.get('window');
 
 const Login = () => {
-  const [email, setEmail] = useState('danira@gmail.com');
-  const [contrasena, setContraseña] = useState('123456');
+  const [email, setEmail] = useState('landaprysmxs@gmail.com');
+  const [contrasena, setContraseña] = useState('11111111');
   const [visible, setVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const navigation = useNavigation();
@@ -51,19 +51,17 @@ const Login = () => {
       setVisible(true);
     } else {
       // Aquí puedes agregar la lógica de autenticación
-   
-      const response = await UserService.login(email, contrasena);
-      
-      try {
-        AsyncStorage.setItem('usuario', JSON.stringify(response.value));
-        console.log(response.value);
-      } catch (error) {
-        // console.log({error})
-      }
 
-      if (response.value.IdUser !== 0) {
-        navigation.navigate('Inicio');
-       
+      const response = await UserService.login(email, contrasena);
+
+      try {
+        if (response?.value?.IdUser !== 0) {
+          AsyncStorage.setItem('usuario', JSON.stringify(response?.value));
+          console.log("Res Login: ",response.value);
+          navigation.navigate('Inicio');
+        }
+      } catch (error) {
+        console.log('Error al iniciar sesión:', error);
       }
     }
   };

@@ -14,13 +14,14 @@ import Modal from 'react-native-modal';
 import {Button} from 'react-native-paper';
 import DreamService from '../infrastructure/repositories/ApiDreamRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused} from '@react-navigation/native';
 
 const {width} = Dimensions.get('window');
 
 const ListaSueno = ({route, navigation}) => {
   const [scheduleList, setScheduleList] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
+  const isFocused = useIsFocused();
   const [modalContent, setModalContent] = useState({
     title: '',
     message: '',
@@ -41,13 +42,10 @@ const ListaSueno = ({route, navigation}) => {
   //   // intervar();
   // }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
+  useEffect(() => {
+    if(isFocused)
       listarSuenos();
-
-      return () => {};
-    }, []),
-  );
+  }, [isFocused]);
 
   // const // intervar = () => {
   //   setInterval(() => {
@@ -61,6 +59,7 @@ const ListaSueno = ({route, navigation}) => {
     const IdBaby = baby.IdBaby;
 
     const response = await DreamService.list(IdBaby);
+    console.log('listarSuenos', response);
     setScheduleList(response.value);
   };
 
@@ -79,7 +78,7 @@ const ListaSueno = ({route, navigation}) => {
   };
 
   const confirmDelete = async () => {
-    const response = await DreamService.deletes(IdDream);
+    await DreamService.deletes(IdDream);
     listarSuenos();
     setModalVisible(false);
   };
@@ -160,7 +159,7 @@ const ScheduleItem = ({item, index, handleDelete}) => {
   };
 
   const actualizar = async IdDream => {
-    const response = await DreamService.update(IdDream);
+    await DreamService.update(IdDream);
     listarSuenos();
   };
 

@@ -64,6 +64,7 @@ const Registro = () => {
       };
       try {
         const response = await UserService.guardar(user);
+        console.log("response user: ", response);
         AsyncStorage.setItem('usuario', JSON.stringify(response));
         if (response) {
           navigation.navigate('Bienvenida');

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,19 @@ import {
   Image,
   TouchableOpacity,
   FlatList,
-  Alert,
 } from 'react-native';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Modal from 'react-native-modal';
 import {Button} from 'react-native-paper';
-import {useNavigation} from '@react-navigation/native';
+import {useIsFocused} from '@react-navigation/native';
 import CitasMedicasServices from '../infrastructure/repositories/CitasMedicasServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
 import io from 'socket.io-client';
+import BabyService from '../infrastructure/repositories/ApiBbayRepositor';
 
-const socket = io('http://localhost:3000');
-
-const RegistroCita = () => {
-  const navigation = useNavigation();
-  // const initialLetter = "A" ? "A".charAt(0).toUpperCase() : 'A';
+const RegistroCita = ({navigation}) => {
+  const [bebe, setBebe] = useState(null);
+  const isFocused = useIsFocused();
 
   // Estado para almacenar los datos de las citas y el nombre del usuario
   const [citasData, setCitasData] = useState([]);
@@ -50,7 +47,7 @@ const RegistroCita = () => {
   const handleDeleteCita = async id => {
     // setCitasData(citasData.filter(cita => cita.id !== id));
 
-    const response = await CitasMedicasServices.deletes(id);
+    await CitasMedicasServices.deletes(id);
     listarCitasMedicas();
   };
 
@@ -58,53 +55,43 @@ const RegistroCita = () => {
     navigation.navigate('Menu');
   };
 
-  // useEffect(() => {
-  //   listarCitasMedicas();
-  //   cargarDatos();
-  //   // socket.on('guardarCitaMedica', async newRecord => {
-  //   //   listarCitasMedicas();
-  //   // });
-  //   // intervar();
-  // }, []);
+  useEffect(() => {
+    cargarDatos();
+    listarCitasMedicas();
+  }, [navigation]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      listarCitasMedicas();
+  useEffect(() => {
+    if (isFocused) {
       cargarDatos();
-
-      return () => {
-        
-      };
-    }, []),
-  );
-
-  // const // intervar = () => {
-  //   setInterval(() => {
-  //     // console.log("interval")
-  //     listarCitasMedicas();
-  //   }, 60000);
-  // };
+      listarCitasMedicas();
+    }
+  }, [isFocused]);
 
   const cargarDatos = async () => {
-    let usuario = await AsyncStorage.getItem('usuario');
-    usuario = JSON.parse(usuario);
+    const usuario = JSON.parse(await AsyncStorage.getItem('usuario'));
     setUserName(usuario.fullName + ' ' + usuario.fullLastName);
-  };
 
-  const listarCitasMedicas = async () => {
-    try {
-      let bebe = await AsyncStorage.getItem('bebe');
-      bebe = JSON.parse(bebe);
-      let IdBaby = bebe.IdBaby;
-
-      const response = await CitasMedicasServices.list(IdBaby);
-      console.log(response.value);
-      if (response.value === true) return;
-      setCitasData(response.value);
-    } catch (error) {
-      console.log({error});
+    let data = await BabyService.getBabyById(usuario?.IdUser);
+    console.log('info bebe: ', data);
+    if (data) {
+      AsyncStorage.setItem('bebe', JSON.stringify(data?.value));
     }
   };
+
+  const listarCitasMedicas = useCallback(async () => {
+    try {
+      let bebeStorage = JSON.parse(await AsyncStorage.getItem('bebe'));
+      setBebe(bebeStorage);
+
+      const response = await CitasMedicasServices.list(bebeStorage?.IdBaby);
+      console.log(response);
+      if (response.value) {
+        setCitasData(response.value);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }, [bebe, citasData]);
 
   return (
     <View style={styles.container}>
@@ -128,7 +115,7 @@ const RegistroCita = () => {
             key={item.id}
             item={item}
             imageSource={imageSource}
-            onDelete={() => handleDeleteCita(item.IdMedicalAppointment)}
+            onDelete={() => handleDeleteCita(item?.IdMedicalAppointment)}
           />
         )}
         keyExtractor={item => item.id}

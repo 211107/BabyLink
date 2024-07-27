@@ -44,7 +44,7 @@ const RegistroBebe = ({navigation, route}) => {
   }, []);
 
   const cargarDatos = useCallback(async () => {
-    if (params && params?.bebe) {
+    if (params?.bebe) {
       const bebe = params?.bebe;
       if (bebe) {
         setBebe(bebe);
@@ -60,6 +60,8 @@ const RegistroBebe = ({navigation, route}) => {
         }
         setIsUpdate(true);
       }
+    } else {
+      console.log('No hay bebe es nuevo');
     }
   }, [params, bebe]);
 
@@ -73,12 +75,8 @@ const RegistroBebe = ({navigation, route}) => {
       const parsedUsuario = JSON.parse(response);
       const IdUser = parsedUsuario?.IdUser ?? 0;
 
-      let IdBaby = 0;
-      if (bebe !== undefined) {
-        IdBaby = bebe?.IdBaby;
-      }
       const baby = {
-        IdBaby,
+        IdBaby: bebe?.IdBaby,
         birthdate: fechaNacimiento
           ? fechaNacimiento
           : bebe?.birthdate ?? new Date().toISOString().split('T')[0],
@@ -90,8 +88,12 @@ const RegistroBebe = ({navigation, route}) => {
         height: estatura,
       };
 
-      let responseBaby = await BabyService.actualizar(IdUser, baby);
-      console.warn(responseBaby ?? 'Se actualizó el bebe');
+      let responseBaby = await BabyService.actualizar(baby);
+      if (responseBaby) {
+        navigation.navigate('Inicio');
+      } else {
+        throw new Error('No se pudo actualizar el bebe');
+      }
     } catch (error) {
     } finally {
       setIsLoading(false);
@@ -107,13 +109,9 @@ const RegistroBebe = ({navigation, route}) => {
 
       const parsedUsuario = JSON.parse(response);
       const IdUser = parsedUsuario?.value?.IdUser ?? 0;
-      console.log("usuario id: ", IdUser);
-
+      console.log('usuario id: ', IdUser);
 
       let IdBaby = 0;
-      // if (bebe !== undefined) {
-      //   IdBaby = bebe.IdBaby;
-      // }
       const baby = {
         IdBaby,
         birthdate: fechaNacimiento,
@@ -124,7 +122,6 @@ const RegistroBebe = ({navigation, route}) => {
         weight: peso,
         height: estatura,
       };
-      console.log("baby a enviar: ", baby);
       let responseBaby = await BabyService.guardar(baby);
 
       if (responseBaby) {
@@ -136,7 +133,6 @@ const RegistroBebe = ({navigation, route}) => {
       }
     } catch (error) {
       console.error('Error al enviar datos del bebé:', error.message);
-      // Muestra un mensaje de error al usuario aquí
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +151,9 @@ const RegistroBebe = ({navigation, route}) => {
           keyboardShouldPersistTaps="handl  ">
           <View style={styles.innerContainer}>
             <View style={styles.headerContainer}>
-              <Text style={styles.headerText}>Háblanos un poco de tu bebé</Text>
+              <Text style={styles.headerText}>
+                Háblanos un poco de tu bebé {bebe ? bebe?.IdBaby : 'New'}
+              </Text>
             </View>
 
             <View style={styles.inputContainer}>

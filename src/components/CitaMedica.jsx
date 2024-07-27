@@ -21,6 +21,7 @@ import CirculoImage from '../assets/images/circulo.png';
 import Accesorio from '../assets/images/accesorio.png';
 import CitasMedicasServices from '../infrastructure/repositories/CitasMedicasServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import moment from 'moment';
 
 const {width, height} = Dimensions.get('window');
 
@@ -76,50 +77,22 @@ const CitaMedica = () => {
       );
       setModalVisible(true);
     } else {
-      let storage;
-      let bebe;
-      try {
-        storage = await AsyncStorage.getItem('bebe');
-        bebe = JSON.parse(storage);
-        IdBaby = bebe.IdBaby;
-      } catch (error) {}
-
+      const {IdBaby} = JSON.parse(await AsyncStorage.getItem('bebe'));
       const newCita = {
         IdMedicalAppointment: 0,
-        IdBaby: IdBaby, // Esta dato lo sacan del local storage
+        IdBaby: IdBaby,
         title: titulo,
         description: descripcion,
-        hour: `${time}:00`,
-        date: selectedDate.toISOString().split('T')[0],
+        hour: moment(time, 'HH:mm').format('HH:mm'),
+        date: moment(selectedDate).format('YYYY-MM-DD'),
       };
+
+      console.log('Nueva cita:', newCita);
       const response = await CitasMedicasServices.guardar(newCita);
 
-      // Llamada a la API para guardar la cita
-      // fetch('https://tu-api-url.com/citas', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(newCita),
-      // })
-      //   .then(response => {
-      //     if (!response.ok) {
-      //       throw new Error('Network response was not ok');
-      //     }
-      //     return response.json();
-      //   })
-      //   .then(data => {
-      //     // Maneja la respuesta del servidor
-      //     Alert.alert('Éxito', 'Cita guardada exitosamente');
-      //     // Solo redirigir si la llamada a la API es exitosa
-      //     navigation.navigate('RegistroCitas', { newCita });
-      //   })
-      //   .catch(error => {
-      //     // Maneja errores
-      //     console.error('Error:', error);
-      //     setErrorMessage('Hubo un problema al guardar la cita. Inténtalo nuevamente.');
-      //     setModalVisible(true);
-      //   });
+      if (response?.status === 200) {
+        Alert.alert('Cita guardada', 'La cita ha sido guardada exitosamente');
+      }
 
       // Simulación de redirección sin llamada a la API para propósitos de prueba
       navigation.navigate('RegistroCita', {newCita});
@@ -162,8 +135,8 @@ const CitaMedica = () => {
               {textDecorationLine: 'underline', color: 'black'},
             ]}>
             {selectedDate
-              ? selectedDate.toISOString().split('T')[0]
-              : 'Selecciona'}
+              ? moment(selectedDate).format('DD/MM/YYYY')
+              : 'Seleccionar'}
           </Text>
           <TouchableOpacity onPress={toggleCalendar} style={styles.iconButton}>
             <AntDesign name="down" color="#1E1E1E" size={20} />
@@ -175,6 +148,7 @@ const CitaMedica = () => {
             value={selectedDate || new Date()}
             mode="date"
             display="default"
+            minimumDate={moment().toDate()}
             onChange={(event, date) => {
               setShowCalendar(false);
               if (date) {

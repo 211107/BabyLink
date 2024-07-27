@@ -1,39 +1,38 @@
-// front_babylink/ui/components/context/NotificationContext.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, {createContext, useState, useEffect} from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import PushNotification from 'react-native-push-notification';
 import io from 'socket.io-client';
 import CitasMedicasServices from '../../infrastructure/repositories/CitasMedicasServices';
+import moment from 'moment';
 import DreamService from '../../infrastructure/repositories/ApiDreamRepository';
+moment.locale('es');
 
-const socket = io('http://localhost:3000'); // aqui ira la ruta del api-gateway|
+const socket = io('https://babylink.liosftwr.space/api-baby-link'); // APIGATEWAY
 
 export const NotificationContext = createContext();
 
-export const NotificationProvider = ({children}) => {
-  const [notificaciones, setNotificaciones] = useState([
-    {
-      id: 1,
-      texto: 'La hora de dormir se aproxima',
-      tiempo: '10 min',
-      // icono: require('../assets/images/sueno1.png'),
-    },
-    {
-      id: 2,
-      texto: 'Te faltan algunas vacunas por aplicar',
-      tiempo: '40 min',
-      // icono: require('../../assets/images/vaccine.png'),
-    },
-  ]);
+export const NotificationProvider = ({ children }) => {
+  const [notificaciones, setNotificaciones] = useState([]);
 
   useEffect(() => {
+    PushNotification.createChannel(
+      {
+        channelId: 'babylink-channel',
+        channelName: 'Babylink Notifications',
+        channelDescription: 'Canal de notificaciones de Babylink',
+        soundName: 'default',
+        importance: 4,
+        vibrate: true,
+      },
+      created => console.log(`createChannel returned '${created}'`)
+    );
+
     PushNotification.configure({
       onNotification: function (notification) {
         const nuevaNotificacion = {
           id: Math.random(),
           texto: notification.message,
           tiempo: 'ahora',
-          // icono: require('../../assets/images/notificaciones.png'),
         };
         setNotificaciones(prevNotificaciones => [
           ...prevNotificaciones,
@@ -44,21 +43,10 @@ export const NotificationProvider = ({children}) => {
       requestPermissions: Platform.OS === 'ios',
     });
 
-    // const timer = setTimeout(() => {
-    //   PushNotification.localNotification({
-    //     title: "Nueva Notificación",
-    //     message: "Has recibido una nueva notificación",
-    //     playSound: true,
-    //     soundName: 'default',
-    //   });
-    // }, 10000);
-
-    // Escucha el evento 'newRecord'
     socket.on('newRecord', async newRecord => {
-      // console.log('Nuevo registro recibido:', newRecord);
       PushNotification.localNotification({
         title: 'Nueva Notificación',
-        message: 'Han comentado algo en le chat',
+        message: 'Han comentado algo en el chat',
         playSound: true,
         soundName: 'default',
       });
@@ -66,132 +54,169 @@ export const NotificationProvider = ({children}) => {
 
     socket.on('tick', async newRecord => {
       listarCitasMedicas();
-      listarSuenos();
+      listarDreams();
     });
 
-    // Cleanup the socket connection on unmount
     return () => {
       socket.off('newRecord');
       socket.disconnect();
     };
-
-    return () => clearTimeout(timer);
   }, []);
 
-  const listarSuenos = async () => {
-    // Esto lo recuperan del storage del movile
+  useEffect(() => {
+    listarCitasMedicas();
+    listarDreams();
+  }, []);
+
+  useEffect(() => {
     try {
-      let bebe = await AsyncStorage.getItem('bebe');
-      bebe = JSON.parse(bebe);
-      const IdBaby = bebe.IdBaby;
+      const intervalo = setInterval(() => {
+        listarCitasMedicas();
+        listarDreams();
+      }, 5000);
+      return () => clearInterval(intervalo);
+    } catch (error) {
+      console.log('error', error);
+    }
+  }, []);
+
+  const listarDreams = async () => {
+    try {
+      let { IdBaby, nameBaby } = JSON.parse(await AsyncStorage.getItem('bebe'));
+      if (!IdBaby) return;
       const response = await DreamService.list(IdBaby);
-      for (let index = 0; index < response.value.length; index++) {
-        let item = response.value[index];
-        let hora = item.finalHour;
-        if (item.IsActivated == 1) {
-          let value = isFiveMinutesOrLessAway(hora);
-          if (value === true) {
-            PushNotification.localNotification({
-              title: 'Nueva Notificación',
-              message: 'Hay que despertar al bebe a las ' + item.finalHour,
-              playSound: true,
-              soundName: 'default',
-            });
-            item = {
-              ...item,
-              IsActivated: 0,
-            };
-            await DreamService.guardar(item);
+      console.log('dreams notifications', response);
+      if (response) {
+        const newNotificaciones = response.value.filter(async item => {
+          const notificationSent = await isNotificationSent(item?.IdDream);
+          return notificationSent;
+        }).map(item => ({
+          id: item?.IdDream,
+          texto: `Hora de dormir a las ${item?.initialHour}`,
+          tiempo: moment(`${item?.initialHour}`, 'HH:mm A').fromNow(),
+          icono: require('../../assets/images/notificaciones.png'),
+        }));
+        
+        setNotificaciones(prevNotificaciones => mergeNotificaciones(prevNotificaciones, newNotificaciones));
+        
+        response.value.forEach(async item => {
+          const hourToDream = moment(`${item?.initialHour}`, 'HH:mm:ss');
+          if (isFifteenMinutesOrLessAway(hourToDream)) {
+            const notificationSent = await isNotificationSent(item?.IdDream);
+            if (!notificationSent) {
+              PushNotification.localNotification({
+                channelId: 'babylink-channel',
+                title: 'Recordatorio de Sueño',
+                message: `${nameBaby} llegó la hora de dormir`,
+                playSound: true,
+                soundName: 'default',
+              });
+              await markNotificationAsSent(item?.IdDream);
+            }
           }
-        }
+        });
+      } else {
+        console.log('sin respuesta: ', response);
       }
     } catch (error) {
-      // console.log({error});
+      console.log({ error });
     }
   };
 
   const listarCitasMedicas = async () => {
     try {
-      let bebe = await AsyncStorage.getItem('bebe');
-      bebe = JSON.parse(bebe);
-      let IdBaby = bebe.IdBaby;
+      let { IdBaby } = JSON.parse(await AsyncStorage.getItem('bebe'));
+      if (!IdBaby) return;
       const response = await CitasMedicasServices.list(IdBaby);
-      if (response.value) {
-        for (let index = 0; index < response.value.length; index++) {
-          let item = response.value[index];
-          let fecha = item.date;
-          let hora = item.hour;
-          // console.log({fecha, hora, active: item.active});
-          if (item.active == 1) {
-            let value = isApproximatelyOneHourAway({fecha, hora});
-            // console.log({value});
-            if (value === true) {
+      if (response) {
+        const newNotificaciones = response.value.filter(async item => {
+          const notificationSent = await isNotificationSent(item?.IdMedicalAppointment);
+          return notificationSent;
+        }).map(item => ({
+          id: item?.IdMedicalAppointment,
+          texto: `${item?.title}`,
+          tiempo: moment(`${item?.date} ${item?.hour}`, 'YYYY-MM-DD HH:mm:ss').fromNow(),
+          icono: require('../../assets/images/notificaciones.png'),
+        }));
+        
+        setNotificaciones(prevNotificaciones => mergeNotificaciones(prevNotificaciones, newNotificaciones));
+
+        response.value.forEach(async item => {
+          const appointmentTime = moment(`${item?.date} ${item?.hour}`, 'YYYY-MM-DD HH:mm:ss');
+          if (isFifteenMinutesOrLessAway(appointmentTime)) {
+            const notificationSent = await isNotificationSent(item?.IdMedicalAppointment);
+            if (!notificationSent) {
               PushNotification.localNotification({
-                title: 'Nueva Notificación',
-                message: 'Cital con pediatra cerca: ' + item.title,
+                channelId: 'babylink-channel',
+                title: 'Recordatorio de Cita',
+                message: `Tienes una cita médica a las ${appointmentTime.format('HH:mm A')}`,
                 playSound: true,
                 soundName: 'default',
               });
-              await CitasMedicasServices.guardar(item);
+              await markNotificationAsSent(item?.IdMedicalAppointment);
             }
           }
-        }
+        });
+      } else {
+        console.log('sin respuesta: ', response);
       }
     } catch (error) {
-      // console.log({error});
+      console.log({ error });
     }
   };
 
-  const isFiveMinutesOrLessAway = targetTime => {
-    // Obtener la hora actual
-    const now = new Date();
-
-    // Extraer la hora y los minutos actuales
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-
-    // Construir una fecha solo con la hora y los minutos actuales
-    const nowTime = new Date();
-    nowTime.setHours(currentHours, currentMinutes, 0, 0); // Resetea segundos y milisegundos
-
-    // Parsear la hora objetivo
-    const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
-
-    // Construir una fecha solo con la hora y los minutos objetivo
-    const targetTimeDate = new Date();
-    targetTimeDate.setHours(targetHours, targetMinutes, 0, 0); // Resetea segundos y milisegundos
-
-    // Calcular la diferencia en milisegundos
-    const difference = targetTimeDate - nowTime;
-
-    // Convertir la diferencia a minutos
-    const differenceInMinutes = difference / (1000 * 60);
-
-    // Verificar si la diferencia es de 5 minutos o menos
-    return differenceInMinutes <= 5 && differenceInMinutes >= 0;
+  const isFifteenMinutesOrLessAway = targetDateTime => {
+    const now = moment().local();
+    const differenceInMinutes = targetDateTime.diff(now, 'minutes');
+    console.log('differenceInMinutes', differenceInMinutes, ' ahora: ', now, ' cita: ', targetDateTime);
+    return differenceInMinutes <= 15 && differenceInMinutes >= 0;
   };
 
-  const isApproximatelyOneHourAway = targetDateTime => {
-    // Parsear la fecha y hora objetivo
-    const targetDate = new Date(
-      targetDateTime.fecha + 'T' + targetDateTime.hora,
-    );
+  const isNotificationSent = async appointmentId => {
+    try {
+      const sentNotifications = await AsyncStorage.getItem('sentNotifications');
+      if (sentNotifications) {
+        const parsedNotifications = JSON.parse(sentNotifications);
+        return parsedNotifications.includes(appointmentId);
+      }
+      return false;
+    } catch (error) {
+      console.log('Error checking if notification was sent:', error);
+      return false;
+    }
+  };
 
-    // Obtener la fecha y hora actual
-    const now = new Date();
+  const markNotificationAsSent = async appointmentId => {
+    try {
+      const sentNotifications = await AsyncStorage.getItem('sentNotifications');
+      let parsedNotifications = [];
+      if (sentNotifications) {
+        parsedNotifications = JSON.parse(sentNotifications);
+      }
+      parsedNotifications.push(appointmentId);
+      await AsyncStorage.setItem('sentNotifications', JSON.stringify(parsedNotifications));
+    } catch (error) {
+      console.log('Error marking notification as sent:', error);
+    }
+  };
 
-    // Calcular la diferencia en milisegundos
-    const difference = targetDate - now;
+  const mergeNotificaciones = (oldList, newList) => {
+    const combined = [...oldList, ...newList];
+    const uniqueNotificaciones = [];
+    const seenIds = new Set();
 
-    // Convertir la diferencia a horas
-    const differenceInHours = difference / (1000 * 60 * 60);
+    combined.forEach(item => {
+      if (!seenIds.has(item.id)) {
+        uniqueNotificaciones.push(item);
+        seenIds.add(item.id);
+      }
+    });
 
-    // Verificar si la diferencia es de una hora o menos
-    return differenceInHours <= 1 && difference > 0;
+    return uniqueNotificaciones;
   };
 
   return (
-    <NotificationContext.Provider value={{notificaciones}}>
+    <NotificationContext.Provider value={{ notificaciones }}>
       {children}
     </NotificationContext.Provider>
   );

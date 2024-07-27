@@ -14,7 +14,6 @@ import Modal from 'react-native-modal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BabyService from '../infrastructure/repositories/ApiBbayRepositor';
 import UserService from '../infrastructure/repositories/ApiUserRepository';
-const {width, height} = Dimensions.get('window');
 
 const Menu = () => {
   const navigation = useNavigation();
@@ -27,7 +26,7 @@ const Menu = () => {
     try {
       let usuario = await AsyncStorage.getItem('usuario');
       usuario = JSON.parse(usuario);
-      serUsuarioNombre(usuario.fullName + ' ' + usuario.fullLastName);
+      serUsuarioNombre(usuario?.fullName + ' ' + usuario?.fullLastName);
     } catch (error) {
       console.error('Error al cargar los datos:', error);
     }
@@ -35,22 +34,6 @@ const Menu = () => {
 
   useEffect(() => {
     cargarDatos();
-    // Aquí podrías hacer la llamada a la API para obtener los datos del usuario
-    /*
-    fetch('https://tu-api-url.com/user-profile', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`, // Asegúrate de incluir el token si es necesario
-      },
-    })
-      .then(response => response.json())
-      .then(data => setUserData(data))
-      .catch(error => {
-        console.error('Error al obtener datos del usuario:', error);
-        Alert.alert('Error', 'Hubo un problema al obtener los datos del usuario. Inténtalo nuevamente.');
-      });
-    */
   }, []);
 
   const handleLogout = () => {

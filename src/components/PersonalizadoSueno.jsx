@@ -13,6 +13,7 @@ import Modal from 'react-native-modal';
 import {Button} from 'react-native-paper';
 import DreamService from '../infrastructure/repositories/ApiDreamRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import moment from 'moment';
 
 const PersonalizadoSueno = ({navigation, route}) => {
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
@@ -20,6 +21,7 @@ const PersonalizadoSueno = ({navigation, route}) => {
   const [currentTime, setCurrentTime] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [loading, setLoading] = useState(false);
   const [scheduleList, setScheduleList] = useState(
     route.params?.scheduleList || [],
   );
@@ -33,14 +35,14 @@ const PersonalizadoSueno = ({navigation, route}) => {
   const showStartPicker = () => setStartPickerVisible(true);
   const hideStartPicker = () => setStartPickerVisible(false);
   const handleConfirmStart = date => {
-    setStartTime(formatTime(date));
+    setStartTime(moment(date).format('hh:mm A'));
     hideStartPicker();
   };
 
   const showEndPicker = () => setEndPickerVisible(true);
   const hideEndPicker = () => setEndPickerVisible(false);
   const handleConfirmEnd = date => {
-    setEndTime(formatTime(date));
+    setEndTime(moment(date).format('hh:mm A'));
     hideEndPicker();
   };
 
@@ -109,39 +111,25 @@ const PersonalizadoSueno = ({navigation, route}) => {
   };
 
   const guardarSueno = async () => {
-  
     try {
-      let bebe = await AsyncStorage.getItem("bebe");
-  
+      let bebe = await AsyncStorage.getItem('bebe');
+
       bebe = JSON.parse(bebe);
-     
+
       const IdBaby = bebe.IdBaby;
 
       const dream = {
         IdDream: 0,
-        IdBaby, // Esto lo recuperan del local storage
+        IdBaby,
         initialHour: castearHora(startTime),
         finalHour: castearHora(endTime),
-        IsActivated: 0,
+        IsActivated: 1,
       };
-      
-     
+
+      console.log('dream: ', dream);
+      setLoading(true);
       const response = await DreamService.guardar(dream);
-      console.log(response)
-      setModalVisible(false);
-    } catch (error) {
-    
-    }
-  };
-
-  const handleSave = () => {
-    if (startTime && endTime) {
-      const start = parseTime(startTime);
-      const end = parseTime(endTime);
-      if (start < end) {
-        const newSchedule = {startTime, endTime};
-        const updatedScheduleList = [...scheduleList, newSchedule];
-
+      if (response.status === 200) {
         setModalContent({
           title: 'Horarios guardados',
           message: `Inicio: ${startTime}\nFin: ${endTime}`,
@@ -150,16 +138,23 @@ const PersonalizadoSueno = ({navigation, route}) => {
         setModalVisible(true);
         setTimeout(() => {
           setModalVisible(false);
-          navigation.navigate('ListaSueno', {newSchedule});
-        }, 2000);
-      } else {
-        setModalContent({
-          title: 'Error',
-          message: 'La hora de inicio debe ser anterior a la hora de fin.',
-          isError: true,
-        });
-        setModalVisible(false);
+          setLoading(false);
+          navigation.navigate('ListaSueno');
+        }, 3000);
+
+        console.log('sueño guardado: ', response);
       }
+    } catch (error) {
+      console.log('Error al guardar el sueño:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (startTime && endTime) {
+      console.log('guardando');
+      guardarSueno();
     } else {
       setModalContent({
         title: 'Error',
@@ -180,7 +175,7 @@ const PersonalizadoSueno = ({navigation, route}) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.greeting}>Buenas noches, Andrea</Text>
+      <Text style={styles.greeting}>Buenas noches</Text>
       <Ionicons name="star" style={styles.star1} />
       <Ionicons name="star" style={styles.star2} />
       <Ionicons name="star" style={styles.star3} />
@@ -235,14 +230,45 @@ const PersonalizadoSueno = ({navigation, route}) => {
         onConfirm={handleConfirmEnd}
         onCancel={hideEndPicker}
       />
-      <Image
-        source={require('../assets/images/sol.png')}
-        style={styles.sun}
-      />
+      <Image source={require('../assets/images/sol.png')} style={styles.sun} />
       <View style={styles.rectangle54} />
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveText}>Guardar</Text>
-      </TouchableOpacity>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          position: 'absolute',
+          bottom: 80,
+          width: '95%',
+        }}>
+        <TouchableOpacity
+        disabled={loading}
+          style={{
+            backgroundColor: colors.accent,
+            width: 160,
+            borderRadius: 10,
+            height: 'auto',
+            alignSelf: 'center',
+          }}
+          onPress={() => navigation.pop()}>
+          <Text style={styles.saveText}>Cancelar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+        disabled={loading}
+          style={{
+            backgroundColor: colors.accent,
+            width: 160,
+            borderRadius: 10,
+            height: 'auto',
+            alignSelf: 'center',
+          }}
+          onPress={handleSave}>
+          <Text style={styles.saveText}>Guardar</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={styles.time}>{currentTime}</Text>
       <View style={styles.circle} />
       <Image
@@ -474,7 +500,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     position: 'absolute',
-    width: 325,
+    width: 180,
     height: 50,
     left: 40,
     top: 721,

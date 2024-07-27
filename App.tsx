@@ -25,9 +25,9 @@ import {
   RegistroCita,
   SueñoPrincipal,
   Vacunacion,
-  Bienvenida
+  Bienvenida,
 } from './src/components';
-import { NotificationProvider } from './src/components/context/NotificationContext';
+import {NotificationProvider} from './src/components/context/NotificationContext';
 
 const Stack = createStackNavigator();
 
@@ -51,7 +51,11 @@ const App = () => {
             component={Registro}
             options={{headerShown: false}}
           />
-          <Stack.Screen name="Inicio" component={Inicio} />
+          <Stack.Screen
+            name="Inicio"
+            component={Inicio}
+            options={{headerShown: false}}
+          />
           <Stack.Screen
             name="Bienvenida"
             component={Bienvenida}

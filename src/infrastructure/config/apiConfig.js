@@ -4,9 +4,9 @@ const API_BASE = 'https://babylink.liosftwr.space/api-baby-link';
 
 const getToken = async () => {
   const usuario = await AsyncStorage.getItem('usuario');
-  const token = JSON.parse(usuario)?.value?.token;
+  const token = JSON.parse(usuario)?.token;
   return token ?? null;
-}
+};
 
 const Axios = axios.create({
   baseURL: API_BASE,
@@ -14,13 +14,14 @@ const Axios = axios.create({
 
 Axios.interceptors.request.use(
   async config => {
-    
-    if(!config.headers) {
+    if (!config.headers) {
       config.headers = {};
     }
 
-    if (getToken()) {
-      config.headers.Authorization = `Bearer ${getToken()}`;
+    const token = await getToken();
+
+    if (token) {
+      config.headers.token = token;
     }
 
     console.log(API_BASE + config.url);

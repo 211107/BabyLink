@@ -5,113 +5,55 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image as RNImage,
-  Dimensions,
 } from 'react-native';
 import Svg, {Text as SvgText, Image as SvgImage, Rect} from 'react-native-svg';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useIsFocused} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BabyService from '../infrastructure/repositories/ApiBbayRepositor';
-import io from 'socket.io-client';
 import moment from 'moment';
 moment.locale('es');
-const socket = io('http://localhost:3000');
-
-const {width, height} = Dimensions.get('window');
 
 const Inicio = ({navigation}) => {
-  // const navigation = useNavigation();
   const [usuarioNombre, serUsuarioNombre] = useState('');
   const [nombreBebe, setNombreBebe] = useState('');
   const [pesoBebe, setPesoBebe] = useState('');
   const [estaturaBebe, setEstaturaBebe] = useState('');
   const [fechaNacimientoBebe, setFechaNacimientoBebe] = useState('');
-  const [bebe, setBebe] = useState({});
+  const [bebe, setBebe] = useState(null);
+  const isFocused = useIsFocused();
 
-  // useEffect(() => {
-  //   cargarDatos();
-  //   cargarDataFire();
-  //   socket.on('guardarBebe', async newRecord => {
-  //     cargarDatos();
-  //   });
-  //   // intervar();
-  // }, []);
+  useEffect(() => {
+    cargarDatos();
+  }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
+  useEffect(() => {
+    if (isFocused) {
       cargarDatos();
-      // cargarDataFire();
-      socket.on('guardarBebe', async newRecord => {
-        cargarDatos();
-      });
-
-      return () => {};
-    }, []),
-  );
-
-  // cargarDatos();
-
-  // const // intervar = () => {
-  //   setInterval(() => {
-  //     // console.log("interval al")
-  //     cargarDatos();
-  //   }, 60000);
-  // };
-
-  const cargarDataFire = () => {};
-
-  const actualizarDatos = async () => {
-    //logica para actualizar
-    try {
-      let usuario = await AsyncStorage.getItem('usuario');
-      usuario = JSON.parse(usuario);
-      const updatedBaby = {
-        ...bebe,
-        nameBaby: nombreBebe,
-        weight: pesoBebe,
-        height: estaturaBebe,
-        birthdate: fechaNacimientoBebe,
-        IdUser: usuario.IdUser, // Asegúrate de tener el IdUser en los datos actualizados
-      };
-
-      let response = await BabyService.actualizar(bebe.IdBaby, updatedBaby);
-      if (response.status === 200) {
-        console.log('Datos actualizados exitosamente:', response.value);
-      }
-    } catch (error) {
-      // console.error('Error al actualizar los datos:', error);
+      console.log('Inicio cargado');
     }
-  };
+  }, [isFocused]);
 
   const cargarDatos = async () => {
     try {
-      let usuario = await AsyncStorage.getItem('usuario');
-      console.warn('usuario', usuario);
-      usuario = JSON.parse(usuario);
+      const usuario = JSON.parse(await AsyncStorage.getItem('usuario'));
+      console.log('storage inicio: ', usuario);
+      serUsuarioNombre(usuario?.fullName + ' ' + usuario?.fullLastName);
+      let baby = await BabyService.getBabyById(usuario?.IdUser);
 
-      serUsuarioNombre(usuario.fullName + ' ' + usuario.fullLastName);
-
-      let baby = await BabyService.getBabyById(usuario.IdUser);
-
-      // const baby = JSON.parse(await AsyncStorage.getItem('bebe'));
-      setBebe(baby);
-      if (baby) {
-        setNombreBebe(baby.nameBaby);
-        setPesoBebe(baby.weight);
-        setEstaturaBebe(baby.height);
-        setFechaNacimientoBebe(moment(baby.birthdate).format('DD [de] MMM [de] YYYY'));
+      setBebe(baby?.value);
+      console.log('Datos del bebé:', baby?.value);
+      if (baby?.value) {
+        setNombreBebe(baby?.value?.nameBaby);
+        setPesoBebe(baby?.value?.weight);
+        setEstaturaBebe(baby?.value?.height);
+        setFechaNacimientoBebe(
+          moment(baby?.value?.birthdate).format('DD [de] MMM [de] YYYY'),
+        );
       }
-
-      // actualizarDatos();
-      // console.log('Actualizando')
     } catch (error) {
       console.error('Error al cargar los datos:', error);
     }
   };
-
-  // Este useEffect se asegura de que el componente se actualice cuando los datos del bebé cambien
-  // useEffect(() => {
-  //   // console.log('Datos del bebé actualizados', { nombreBebe, pesoBebe, estaturaBebe, fechaNacimientoBebe });
-  // }, [nombreBebe, pesoBebe, estaturaBebe, fechaNacimientoBebe]);
 
   return (
     <View style={{flex: 1}}>
@@ -134,13 +76,13 @@ const Inicio = ({navigation}) => {
             rx="25"
             fill="#4CCFC0"
           />
-          {/* <SvgImage
+          <SvgImage
             x="310"
             y="50"
             width="150"
             height="177"
             href={require('../assets/images/nino2.png')}
-          /> */}
+          />
           <Rect
             x="56.5"
             y="348"
@@ -175,7 +117,7 @@ const Inicio = ({navigation}) => {
         <TouchableOpacity
           style={styles.editButton}
           onPress={async () => {
-            await navigation.navigate('RegistroBebe', {bebe});
+            await navigation.navigate('RegistroBebe', {bebe: bebe ?? null});
           }}>
           <View style={styles.editButtonContent}>
             <RNImage
