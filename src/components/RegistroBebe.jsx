@@ -44,16 +44,17 @@ const RegistroBebe = ({navigation, route}) => {
   }, []);
 
   const cargarDatos = useCallback(async () => {
-    if (params?.bebe) {
+    const baby = JSON.parse(await AsyncStorage.getItem('bebe'));
+    if (params?.bebe || baby) {
       const bebe = params?.bebe;
-      if (bebe) {
-        setBebe(bebe);
-        setNombreBebe(bebe.nameBaby);
-        setRelacion(bebe.userRol);
-        setEstatura(bebe.height + '');
-        setPeso(bebe.weight + '');
-        setFechaNacimiento(bebe.birthdate);
-        if (+bebe.gender === 1) {
+      if (baby) {
+        setBebe(baby);
+        setNombreBebe(baby.nameBaby);
+        setRelacion(baby.userRol);
+        setEstatura(baby.height + '');
+        setPeso(baby.weight + '');
+        setFechaNacimiento(baby.birthdate);
+        if (baby.gender === 1) {
           setGenero('niño');
         } else {
           setGenero('niña');
