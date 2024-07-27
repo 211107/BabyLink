@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
+const socket = io('https://babylink.liosftwr.space/api-baby-link');
 
 const ChatPadres = () => {
   const navigation = useNavigation(); // Obtener el objeto de navegación

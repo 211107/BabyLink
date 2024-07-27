@@ -17,7 +17,7 @@ const list = async IdBaby => {
     const {data} = await Axios.get(`${service}/list/${IdBaby}`);
     return data;
   } catch (error) {
-    console.error('Error en listar sueños', error);
+    // console.error('Error en listar sueños', error);
     return {value: []};
   }
 };

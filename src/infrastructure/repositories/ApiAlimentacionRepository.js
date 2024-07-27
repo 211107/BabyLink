@@ -20,7 +20,7 @@ const guardar = async feeding => {
   // return response.data;
 
   try {
-    const {data} = await Axios.post(`${service}/save`, feeding);
+    const {data} = await Axios.post(`${service}/save`, {feeding});
     return data;
   } catch (error) {
     console.log('Error al guardar la alimentacion:', error);
@@ -44,7 +44,7 @@ const actualizar = async feeding => {
 
   // return response.data;
   try {
-    const {data} = await Axios.put(`${service}/update`, feeding);
+    const {data} = await Axios.put(`${service}/update`, {feeding});
     return data;
   } catch (error) {
     console.log('Error al actualizar la alimentacion:', error);

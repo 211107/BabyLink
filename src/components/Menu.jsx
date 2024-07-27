@@ -78,6 +78,7 @@ const Menu = () => {
       AsyncStorage.removeItem('usuario');
       AsyncStorage.removeItem('bebe');
       AsyncStorage.removeItem('token');
+      AsyncStorage.removeItem('sentNotifications');
       navigation.navigate('Login');
     } else if (modalTitle === 'Eliminar cuenta') {
       let usuario = await AsyncStorage.getItem('usuario');

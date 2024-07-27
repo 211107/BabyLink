@@ -28,7 +28,7 @@ const send = async chat => {
 
   // return response.data;
   try {
-    const {data} = await Axios.post(`${service}/save`, chat);
+    const {data} = await Axios.post(`${service}/save`, {chat});
     return data;
   } catch (error) {
     console.log('Error al enviar el mensaje:', error);

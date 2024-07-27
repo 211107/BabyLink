@@ -18,6 +18,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import LinearGradient from 'react-native-linear-gradient';
 import BabyService from '../infrastructure/repositories/ApiBbayRepositor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useIsFocused} from '@react-navigation/native';
 
 const RegistroBebe = ({navigation, route}) => {
   const params = route.params;
@@ -31,6 +32,7 @@ const RegistroBebe = ({navigation, route}) => {
   const [estatura, setEstatura] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdate, setIsUpdate] = useState(false);
+  const isFocused = useIsFocused();
 
   const handleConfirm = date => {
     date = new Date(date);
@@ -40,26 +42,30 @@ const RegistroBebe = ({navigation, route}) => {
   };
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (isFocused) {
+      cargarDatos();
+    }
+  }, [isFocused]);
 
   const cargarDatos = useCallback(async () => {
-    const baby = JSON.parse(await AsyncStorage.getItem('bebe'));
-    if (params?.bebe || baby) {
-      const bebe = params?.bebe;
-      if (baby) {
-        setBebe(baby);
-        setNombreBebe(baby.nameBaby);
-        setRelacion(baby.userRol);
-        setEstatura(baby.height + '');
-        setPeso(baby.weight + '');
-        setFechaNacimiento(baby.birthdate);
-        if (baby.gender === 1) {
+    const usuario = JSON.parse(await AsyncStorage.getItem('usuario'));
+    let {value} = await BabyService.getBabyById(usuario?.IdUser);
+
+    if (value) {
+      if (value?.IdBaby) {
+        setIsUpdate(true);
+        console.log('Si hay bebe => ', value);
+        setBebe(value);
+        setNombreBebe(value.nameBaby);
+        setRelacion(value.userRol);
+        setEstatura(value.height + '');
+        setPeso(value.weight + '');
+        setFechaNacimiento(value.birthdate);
+        if (value.gender === 1) {
           setGenero('niño');
         } else {
           setGenero('niña');
         }
-        setIsUpdate(true);
       }
     } else {
       console.log('No hay bebe es nuevo');
@@ -123,7 +129,7 @@ const RegistroBebe = ({navigation, route}) => {
         height: estatura,
       };
 
-      console.log("Saving ...: ", baby);
+      console.log('Saving ...: ', baby);
       let responseBaby = await BabyService.guardar(baby);
 
       if (responseBaby) {
@@ -153,9 +159,7 @@ const RegistroBebe = ({navigation, route}) => {
           keyboardShouldPersistTaps="handl  ">
           <View style={styles.innerContainer}>
             <View style={styles.headerContainer}>
-              <Text style={styles.headerText}>
-                Háblanos un poco de tu bebé
-              </Text>
+              <Text style={styles.headerText}>Háblanos un poco de tu bebé</Text>
             </View>
 
             <View style={styles.inputContainer}>
